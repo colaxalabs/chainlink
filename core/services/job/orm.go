@@ -257,10 +257,10 @@ func (o *orm) RecordError(ctx context.Context, jobID int32, description string) 
 }
 
 // OffChainReportingJobs returns job specs
-func (orm *orm) JobsV2() ([]JobSpecV2, error) {
-	//orm.MustEnsureAdvisoryLock()
+func (o *orm) JobsV2() ([]JobSpecV2, error) {
+	//TODO: o.MustEnsureAdvisoryLock()
 	var jobs []JobSpecV2
-	err := orm.db.
+	err := o.db.
 		Preload("PipelineSpec").
 		Preload("OffchainreportingOracleSpec").
 		Preload("EthRequestEventSpec").
@@ -271,10 +271,10 @@ func (orm *orm) JobsV2() ([]JobSpecV2, error) {
 }
 
 // FindJob returns job by ID
-func (orm *orm) FindJob(id int32) (JobSpecV2, error) {
-	//orm.MustEnsureAdvisoryLock()
+func (o *orm) FindJob(id int32) (JobSpecV2, error) {
+	//TODO: orm.MustEnsureAdvisoryLock()
 	var job JobSpecV2
-	err := orm.db.
+	err := o.db.
 		Preload("PipelineSpec").
 		Preload("OffchainreportingOracleSpec").
 		Preload("EthRequestEventSpec").

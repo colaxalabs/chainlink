@@ -683,10 +683,9 @@ func MustGenerateRandomKey(t testing.TB, opts ...interface{}) models.Key {
 func MustInsertOffchainreportingOracleSpec(t *testing.T, store *strpkg.Store, transmitterAddress models.EIP55Address) job.OffchainReportingOracleSpec {
 	t.Helper()
 
-	pid := models.PeerID(DefaultP2PPeerID)
 	spec := job.OffchainReportingOracleSpec{
 		ContractAddress:                        NewEIP55Address(),
-		P2PPeerID:                              &pid,
+		P2PPeerID:                              models.PeerID(DefaultP2PPeerID),
 		P2PBootstrapPeers:                      []string{},
 		IsBootstrapPeer:                        false,
 		EncryptedOCRKeyBundleID:                &DefaultOCRKeyBundleIDSha256,
