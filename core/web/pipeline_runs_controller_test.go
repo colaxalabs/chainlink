@@ -6,12 +6,13 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/smartcontractkit/chainlink/core/services/job"
+
 	"github.com/pelletier/go-toml"
 
 	"github.com/smartcontractkit/chainlink/core/internal/cltest"
 	"github.com/smartcontractkit/chainlink/core/services/offchainreporting"
 	"github.com/smartcontractkit/chainlink/core/services/pipeline"
-	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/chainlink/core/web"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,7 +42,7 @@ func TestPipelineRunsController_Create_HappyPath(t *testing.T) {
 	defer cleanup()
 	cltest.AssertServerResponse(t, response, http.StatusOK)
 
-	parsedResponse := models.PipelineRun{}
+	parsedResponse := job.PipelineRun{}
 	err = web.ParseJSONAPIResponse(cltest.ParseResponseBody(t, response), &parsedResponse)
 	assert.NoError(t, err)
 	assert.NotNil(t, parsedResponse.ID)

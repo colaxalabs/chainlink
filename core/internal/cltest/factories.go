@@ -13,10 +13,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/smartcontractkit/chainlink/core/adapters"
+
+	"github.com/smartcontractkit/chainlink/core/services/job"
+
 	"github.com/jinzhu/gorm"
 	p2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	pbormanuuid "github.com/pborman/uuid"
-	"github.com/smartcontractkit/chainlink/core/adapters"
 	"github.com/smartcontractkit/chainlink/core/assets"
 	"github.com/smartcontractkit/chainlink/core/internal/mocks"
 	"github.com/smartcontractkit/chainlink/core/logger"
@@ -677,12 +680,13 @@ func MustGenerateRandomKey(t testing.TB, opts ...interface{}) models.Key {
 	return key
 }
 
-func MustInsertOffchainreportingOracleSpec(t *testing.T, store *strpkg.Store, transmitterAddress models.EIP55Address) models.OffchainReportingOracleSpec {
+func MustInsertOffchainreportingOracleSpec(t *testing.T, store *strpkg.Store, transmitterAddress models.EIP55Address) job.OffchainReportingOracleSpec {
 	t.Helper()
 
-	spec := models.OffchainReportingOracleSpec{
+	pid := models.PeerID(DefaultP2PPeerID)
+	spec := job.OffchainReportingOracleSpec{
 		ContractAddress:                        NewEIP55Address(),
-		P2PPeerID:                              models.PeerID(DefaultP2PPeerID),
+		P2PPeerID:                              &pid,
 		P2PBootstrapPeers:                      []string{},
 		IsBootstrapPeer:                        false,
 		EncryptedOCRKeyBundleID:                &DefaultOCRKeyBundleIDSha256,

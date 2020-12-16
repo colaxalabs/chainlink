@@ -1,10 +1,12 @@
-package pipeline
+package job
 
 import (
 	"context"
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/smartcontractkit/chainlink/core/services/pipeline"
 
 	"github.com/smartcontractkit/chainlink/core/store/models"
 
@@ -26,12 +28,12 @@ type (
 		Close() error
 		CreateRun(ctx context.Context, jobID int32, meta map[string]interface{}) (int64, error)
 		AwaitRun(ctx context.Context, runID int64) error
-		ResultsForRun(ctx context.Context, runID int64) ([]Result, error)
+		ResultsForRun(ctx context.Context, runID int64) ([]pipeline.Result, error)
 	}
 
 	runner struct {
-		orm                             ORM
-		config                          Config
+		orm                             pipeline.ORM
+		config                          pipeline.Config
 		processIncompleteTaskRunsWorker utils.SleeperTask
 		runReaperWorker                 utils.SleeperTask
 
@@ -50,7 +52,7 @@ var (
 	)
 )
 
-func NewRunner(orm ORM, config Config) *runner {
+func NewRunner(orm pipeline.ORM, config pipeline.Config) *runner {
 	r := &runner{
 		orm:    orm,
 		config: config,
@@ -145,7 +147,7 @@ func (r *runner) AwaitRun(ctx context.Context, runID int64) error {
 	return r.orm.AwaitRun(ctx, runID)
 }
 
-func (r *runner) ResultsForRun(ctx context.Context, runID int64) ([]Result, error) {
+func (r *runner) ResultsForRun(ctx context.Context, runID int64) ([]pipeline.Result, error) {
 	ctx, cancel := utils.CombinedContext(r.chStop, ctx)
 	defer cancel()
 	return r.orm.ResultsForRun(ctx, runID)
@@ -186,7 +188,7 @@ func (r *runner) processTaskRun() (anyRemaining bool, err error) {
 	ctx, cancel := utils.CombinedContext(r.chStop, r.config.JobPipelineMaxTaskDuration())
 	defer cancel()
 
-	return r.orm.ProcessNextUnclaimedTaskRun(ctx, func(ctx context.Context, txdb *gorm.DB, jobID int32, taskRun TaskRun, predecessors []TaskRun) Result {
+	return r.orm.ProcessNextUnclaimedTaskRun(ctx, func(ctx context.Context, txdb *gorm.DB, jobID int32, taskRun pipeline.TaskRun, predecessors []pipeline.TaskRun) pipeline.Result {
 		loggerFields := []interface{}{
 			"jobID", jobID,
 			"taskName", taskRun.PipelineTaskSpec.DotID,
@@ -199,12 +201,12 @@ func (r *runner) processTaskRun() (anyRemaining bool, err error) {
 
 		logger.Infow("Running pipeline task", loggerFields...)
 
-		inputs := make([]Result, len(predecessors))
+		inputs := make([]pipeline.Result, len(predecessors))
 		for i, predecessor := range predecessors {
 			inputs[i] = predecessor.Result()
 		}
 
-		task, err := UnmarshalTaskFromMap(
+		task, err := pipeline.UnmarshalTaskFromMap(
 			taskRun.PipelineTaskSpec.Type,
 			taskRun.PipelineTaskSpec.JSON.Val,
 			taskRun.PipelineTaskSpec.DotID,
@@ -213,13 +215,13 @@ func (r *runner) processTaskRun() (anyRemaining bool, err error) {
 		)
 		if err != nil {
 			logger.Errorw("Pipeline task run could not be unmarshaled", append(loggerFields, "error", err)...)
-			return Result{Error: err}
+			return pipeline.Result{Error: err}
 		}
-		var job models.JobSpecV2
+		var job JobSpecV2
 		err = txdb.Find(&job, "id = ?", jobID).Error
 		if err != nil {
 			logger.Errorw("unexpected error could not find job by ID", append(loggerFields, "error", err)...)
-			return Result{Error: err}
+			return pipeline.Result{Error: err}
 		}
 
 		// Order of precedence for task timeout:
@@ -236,7 +238,7 @@ func (r *runner) processTaskRun() (anyRemaining bool, err error) {
 		}
 
 		result := task.Run(ctx, taskRun, inputs)
-		if _, is := result.Error.(FinalErrors); !is && result.Error != nil {
+		if _, is := result.Error.(pipeline.FinalErrors); !is && result.Error != nil {
 			logger.Errorw("Pipeline task run errored", append(loggerFields, "error", result.Error)...)
 		} else {
 			f := append(loggerFields, "result", result.Value)

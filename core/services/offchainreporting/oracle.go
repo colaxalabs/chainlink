@@ -15,10 +15,8 @@ import (
 	"github.com/smartcontractkit/chainlink/core/logger"
 	"github.com/smartcontractkit/chainlink/core/services/eth"
 	"github.com/smartcontractkit/chainlink/core/services/job"
-	"github.com/smartcontractkit/chainlink/core/services/pipeline"
 	"github.com/smartcontractkit/chainlink/core/services/synchronization"
 	"github.com/smartcontractkit/chainlink/core/services/telemetry"
-	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/chainlink/core/store/orm"
 	"github.com/smartcontractkit/chainlink/core/utils"
 	"github.com/smartcontractkit/libocr/gethwrappers/offchainaggregator"
@@ -34,7 +32,7 @@ func RegisterJobType(
 	config *orm.Config,
 	keyStore *KeyStore,
 	jobSpawner job.Spawner,
-	pipelineRunner pipeline.Runner,
+	pipelineRunner job.Runner,
 	ethClient eth.Client,
 	logBroadcaster eth.LogBroadcaster,
 	peerWrapper *SingletonPeerWrapper,
@@ -49,7 +47,7 @@ type jobSpawnerDelegate struct {
 	jobORM         job.ORM
 	config         *orm.Config
 	keyStore       *KeyStore
-	pipelineRunner pipeline.Runner
+	pipelineRunner job.Runner
 	ethClient      eth.Client
 	logBroadcaster eth.LogBroadcaster
 	peerWrapper    *SingletonPeerWrapper
@@ -60,7 +58,7 @@ func NewJobSpawnerDelegate(
 	jobORM job.ORM,
 	config *orm.Config,
 	keyStore *KeyStore,
-	pipelineRunner pipeline.Runner,
+	pipelineRunner job.Runner,
 	ethClient eth.Client,
 	logBroadcaster eth.LogBroadcaster,
 	peerWrapper *SingletonPeerWrapper,
@@ -72,12 +70,12 @@ func (d jobSpawnerDelegate) JobType() job.Type {
 	return JobType
 }
 
-func (d jobSpawnerDelegate) ToDBRow(spec job.Spec) models.JobSpecV2 {
+func (d jobSpawnerDelegate) ToDBRow(spec job.Spec) job.JobSpecV2 {
 	concreteSpec, ok := spec.(OracleSpec)
 	if !ok {
 		panic(fmt.Sprintf("expected an offchainreporting.OracleSpec, got %T", spec))
 	}
-	return models.JobSpecV2{
+	return job.JobSpecV2{
 		OffchainreportingOracleSpec: &concreteSpec.OffchainReportingOracleSpec,
 		Type:                        string(JobType),
 		SchemaVersion:               concreteSpec.SchemaVersion,
@@ -85,7 +83,7 @@ func (d jobSpawnerDelegate) ToDBRow(spec job.Spec) models.JobSpecV2 {
 	}
 }
 
-func (d jobSpawnerDelegate) FromDBRow(spec models.JobSpecV2) job.Spec {
+func (d jobSpawnerDelegate) FromDBRow(spec job.JobSpecV2) job.Spec {
 	if spec.OffchainreportingOracleSpec == nil {
 		return nil
 	}
@@ -244,7 +242,7 @@ func (d jobSpawnerDelegate) ServicesForSpec(spec job.Spec) (services []job.Servi
 // and capturing the result.  Additionally, it converts the result to an
 // ocrtypes.Observation (*big.Int), as expected by the offchain reporting library.
 type dataSource struct {
-	pipelineRunner pipeline.Runner
+	pipelineRunner job.Runner
 	jobID          int32
 }
 
